@@ -1,0 +1,75 @@
+name: Android build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Install stable debug signing key
+        run: |
+          mkdir -p signing
+          curl --fail --location --silent --show-error \
+            https://raw.githubusercontent.com/dannymcc/android-ble-ptt/main/app/debug.keystore \
+            --output signing/debug.keystore
+
+      - name: Build APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Stage APK
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/ptt-keypress.apk
+          sha256sum artifacts/ptt-keypress.apk > artifacts/ptt-keypress.apk.sha256
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ptt-keypress-apk
+          path: |
+            artifacts/ptt-keypress.apk
+            artifacts/ptt-keypress.apk.sha256
+          if-no-files-found: error
+
+      - name: Publish rolling main prerelease
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-main
+          name: Latest main build
+          body: Latest development APK from main. Install and start Shizuku before enabling key injection.
+          prerelease: true
+          files: |
+            artifacts/ptt-keypress.apk
+            artifacts/ptt-keypress.apk.sha256
+
+      - name: Publish tagged release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/ptt-keypress.apk
+            artifacts/ptt-keypress.apk.sha256
