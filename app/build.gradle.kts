@@ -16,6 +16,28 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        create("stableDebug") {
+            val keyFile = rootProject.file("signing/debug.keystore")
+            if (keyFile.exists()) {
+                storeFile = keyFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            val keyFile = rootProject.file("signing/debug.keystore")
+            if (keyFile.exists()) signingConfig = signingConfigs.getByName("stableDebug")
+        }
+        release {
+            isMinifyEnabled = false
+        }
+    }
+
     buildFeatures {
         compose = true
         aidl = true
