@@ -239,15 +239,22 @@ class PttBleManager(
         }
 
         if (!suppressUntilDisconnect.contains(address)) {
-            voxDmrBridge.pttDown()
+            val activeHeld = held.count { !suppressUntilDisconnect.contains(it) }
+            if (activeHeld == 1) {
+                voxDmrBridge.pttDown()
+            }
         }
         _states.update { it + (address to PttDeviceState.Pressed) }
     }
 
     private fun releaseIfNeeded(address: String) {
+        val wasSuppressed = suppressUntilDisconnect.contains(address)
         val wasHeld = held.remove(address)
-        if (wasHeld && !suppressUntilDisconnect.contains(address)) {
-            voxDmrBridge.pttUp()
+        if (wasHeld && !wasSuppressed) {
+            val activeHeld = held.count { !suppressUntilDisconnect.contains(it) }
+            if (activeHeld == 0) {
+                voxDmrBridge.pttUp()
+            }
         }
     }
 
