@@ -16,8 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Keyboard
-import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Radio
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,23 +27,20 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.dmcc.pttkeypress.ble.PttDeviceState
-import io.dmcc.pttkeypress.data.KeyPreset
 import io.dmcc.pttkeypress.data.PttButton
-import io.dmcc.pttkeypress.data.keyPresets
-import io.dmcc.pttkeypress.inject.InjectorStatus
+import io.dmcc.pttkeypress.output.VoxDmrBridge
 import io.dmcc.pttkeypress.service.PttForegroundService
 import io.dmcc.pttkeypress.ui.PttKeypressTheme
 
 class MainActivity : ComponentActivity() {
     private var permissionsGranted by mutableStateOf(false)
+    private val app get() = application as PttKeypressApp
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             permissionsGranted = hasBlePermissions()
             if (permissionsGranted) startPttService()
         }
-
-    private val app get() = application as PttKeypressApp
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,11 +53,7 @@ class MainActivity : ComponentActivity() {
                     app = app,
                     permissionsGranted = permissionsGranted,
                     onRequestPermissions = { permissionLauncher.launch(requiredPermissions()) },
-                    onOpenShizuku = {
-                        val launch = packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
-                        if (launch != null) startActivity(launch)
-                        else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/")))
-                    },
+                    onOpenVoxDmr = { openVoxDmr() },
                     onServiceNeeded = { startPttService() },
                 )
             }
@@ -70,10 +63,24 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         permissionsGranted = hasBlePermissions()
-        app.injector.refresh()
+        app.voxDmrBridge.refresh()
         if (permissionsGranted) {
             startPttService()
             app.bleManager.armAll()
+        }
+    }
+
+    private fun openVoxDmr() {
+        val launch = packageManager.getLaunchIntentForPackage(VoxDmrBridge.VOXDMR_PACKAGE)
+        if (launch != null) {
+            startActivity(launch)
+        } else {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("market://details?id=" + VoxDmrBridge.VOXDMR_PACKAGE),
+                )
+            )
         }
     }
 
@@ -103,13 +110,13 @@ private fun PttKeypressScreen(
     app: PttKeypressApp,
     permissionsGranted: Boolean,
     onRequestPermissions: () -> Unit,
-    onOpenShizuku: () -> Unit,
+    onOpenVoxDmr: () -> Unit,
     onServiceNeeded: () -> Unit,
 ) {
     val buttons by app.repository.buttons.collectAsStateWithLifecycle()
-    val deviceStates by app.bleManager.states.collectAsStateWithLifecycle()
-    val injectorStatus by app.injector.status.collectAsStateWithLifecycle()
+    val states by app.bleManager.states.collectAsStateWithLifecycle()
     val scanResults by app.bleManager.scanResults.collectAsStateWithLifecycle()
+    val voxDmrInstalled by app.voxDmrBridge.installed.collectAsStateWithLifecycle()
     var showPairing by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -135,7 +142,7 @@ private fun PttKeypressScreen(
                 Text("PTT Keypress", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Turn a sleeping Bluetooth PTT button into a real Android key press.",
+                    "Bridge a sleeping Bluetooth PTT button directly into VoxDMR.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -146,7 +153,7 @@ private fun PttKeypressScreen(
                     SetupCard(
                         icon = { Icon(Icons.Outlined.Bluetooth, null) },
                         title = "Bluetooth access",
-                        body = "Allow nearby-device access so PTT Keypress can find and reconnect to your button.",
+                        body = "Allow nearby-device access so the bridge can find and reconnect to your PTT button.",
                         button = "Allow access",
                         onClick = onRequestPermissions,
                     )
@@ -154,25 +161,25 @@ private fun PttKeypressScreen(
             }
 
             item {
-                val (title, body, action) = when (injectorStatus) {
-                    InjectorStatus.Ready -> Triple("Key injection ready", "Shizuku is connected. PTT presses can be sent as real Android key events.", null)
-                    InjectorStatus.PermissionRequired -> Triple("Allow Shizuku", "One-time permission is required for global key injection.", "Grant permission")
-                    InjectorStatus.Connecting -> Triple("Connecting to Shizuku", "Preparing the key injection service…", null)
-                    InjectorStatus.Error -> Triple("Shizuku needs attention", "The key injection service could not start. Re-open Shizuku and try again.", "Try again")
-                    InjectorStatus.Unavailable -> Triple("Start Shizuku", "Shizuku must be running for global key injection. Wireless debugging is enough; root is not required.", "Open Shizuku")
-                }
                 SetupCard(
-                    icon = { Icon(Icons.Outlined.Security, null) },
-                    title = title,
-                    body = body,
-                    button = action,
-                    onClick = {
-                        when (injectorStatus) {
-                            InjectorStatus.PermissionRequired -> app.injector.requestPermission()
-                            InjectorStatus.Unavailable -> onOpenShizuku()
-                            else -> app.injector.refresh()
-                        }
-                    },
+                    icon = { Icon(Icons.Outlined.Radio, null) },
+                    title = if (voxDmrInstalled) "VoxDMR ready" else "Install VoxDMR",
+                    body = if (voxDmrInstalled)
+                        "PTT presses are sent directly to VoxDMR. No root, Shizuku or fake keyboard events."
+                    else
+                        "VoxDMR is not installed. Install it before using the bridge.",
+                    button = if (voxDmrInstalled) "Open VoxDMR" else "Get VoxDMR",
+                    onClick = onOpenVoxDmr,
+                )
+            }
+
+            item {
+                SetupCard(
+                    icon = { Icon(Icons.Outlined.RestartAlt, null) },
+                    title = "Starts after reboot",
+                    body = "Once a button is paired, PTT Keypress re-arms itself automatically when the phone starts.",
+                    button = null,
+                    onClick = {},
                 )
             }
 
@@ -188,12 +195,12 @@ private fun PttKeypressScreen(
                 item {
                     Card {
                         Column(Modifier.padding(20.dp)) {
-                            Icon(Icons.Outlined.Keyboard, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Outlined.Bluetooth, null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(12.dp))
                             Text("No PTT buttons yet", fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Tap Pair PTT, then press and hold the physical PTT button so it wakes and starts advertising.",
+                                "Tap Pair PTT, then press and hold the physical PTT button so it wakes and advertises.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -203,8 +210,7 @@ private fun PttKeypressScreen(
                 items(buttons, key = { it.address }) { button ->
                     ButtonCard(
                         button = button,
-                        state = deviceStates[button.address] ?: PttDeviceState.Waiting,
-                        onMap = { preset -> app.repository.mapKey(button.address, preset) },
+                        state = states[button.address] ?: PttDeviceState.Waiting,
                         onForget = { app.bleManager.forget(button.address) },
                     )
                 }
@@ -293,15 +299,13 @@ private fun SetupCard(
 private fun ButtonCard(
     button: PttButton,
     state: PttDeviceState,
-    onMap: (KeyPreset) -> Unit,
     onForget: () -> Unit,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     val status = when (state) {
         PttDeviceState.Waiting -> "Ready — press PTT"
         PttDeviceState.Connecting -> "Armed for next press"
         PttDeviceState.Connected -> "Awake"
-        PttDeviceState.Pressed -> "PTT held"
+        PttDeviceState.Pressed -> "PTT held → VoxDMR"
         PttDeviceState.Error -> "Connection error"
     }
 
@@ -321,41 +325,15 @@ private fun ButtonCard(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            Text("Mapped key", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Box {
-                OutlinedButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Outlined.Keyboard, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(button.keyLabel)
-                    if (button.keyLabel == "Left Shift") {
-                        Spacer(Modifier.width(8.dp))
-                        Text("Recommended", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    keyPresets.forEach { preset ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(preset.label)
-                                    if (preset.recommended) {
-                                        Text("Recommended", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            },
-                            onClick = {
-                                onMap(preset)
-                                menuOpen = false
-                            },
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
-                "This button sleeps when released. “Ready” means Android is armed for its next wake-up.",
+                "Target: VoxDMR",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "The button sleeps when released. Ready means Android is armed for its next wake-up.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
