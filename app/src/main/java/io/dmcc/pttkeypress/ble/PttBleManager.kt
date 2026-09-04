@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import io.dmcc.pttkeypress.data.PttRepository
-import io.dmcc.pttkeypress.inject.ShizukuKeyInjector
+import io.dmcc.pttkeypress.output.VoxDmrBridge
 import java.util.UUID
 
 data class ScanDevice(val address: String, val name: String, val rssi: Int)
@@ -37,7 +37,7 @@ enum class PttDeviceState {
 class PttBleManager(
     private val context: Context,
     private val repository: PttRepository,
-    private val injector: ShizukuKeyInjector,
+    private val voxDmrBridge: VoxDmrBridge,
 ) {
     private val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val adapter get() = manager.adapter
@@ -51,7 +51,6 @@ class PttBleManager(
 
     private val connections = mutableMapOf<String, BluetoothGatt>()
     private val held = mutableSetOf<String>()
-    private val injectedKeys = mutableMapOf<String, Int>()
     private val suppressUntilDisconnect = mutableSetOf<String>()
     private var scanCallback: ScanCallback? = null
     private var scanStartedNs = 0L
@@ -240,19 +239,16 @@ class PttBleManager(
         }
 
         if (!suppressUntilDisconnect.contains(address)) {
-            repository.find(address)?.let { button ->
-                if (injector.inject(button.keyCode, true)) {
-                    injectedKeys[address] = button.keyCode
-                }
-            }
+            voxDmrBridge.pttDown()
         }
         _states.update { it + (address to PttDeviceState.Pressed) }
     }
 
     private fun releaseIfNeeded(address: String) {
-        held.remove(address)
-        val keyCode = injectedKeys.remove(address) ?: return
-        injector.inject(keyCode, false)
+        val wasHeld = held.remove(address)
+        if (wasHeld && !suppressUntilDisconnect.contains(address)) {
+            voxDmrBridge.pttUp()
+        }
     }
 
     @SuppressLint("MissingPermission")
