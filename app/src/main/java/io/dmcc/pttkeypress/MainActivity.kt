@@ -17,7 +17,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Radio
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -135,14 +134,14 @@ private fun PttKeypressScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
                 Text("PTT Keypress", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Bridge a sleeping Bluetooth PTT button directly into VoxDMR.",
+                    "Bluetooth PTT bridge for VoxDMR.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -165,21 +164,11 @@ private fun PttKeypressScreen(
                     icon = { Icon(Icons.Outlined.Radio, null) },
                     title = if (voxDmrInstalled) "VoxDMR ready" else "Install VoxDMR",
                     body = if (voxDmrInstalled)
-                        "PTT presses are sent directly to VoxDMR. No root, Shizuku or fake keyboard events."
+                        "Ready to send PTT presses."
                     else
-                        "VoxDMR is not installed. Install it before using the bridge.",
+                        "Install VoxDMR to use your paired PTT button.",
                     button = if (voxDmrInstalled) "Open VoxDMR" else "Get VoxDMR",
                     onClick = onOpenVoxDmr,
-                )
-            }
-
-            item {
-                SetupCard(
-                    icon = { Icon(Icons.Outlined.RestartAlt, null) },
-                    title = "Starts after reboot",
-                    body = "Once a button is paired, PTT Keypress re-arms itself automatically when the phone starts.",
-                    button = null,
-                    onClick = {},
                 )
             }
 
@@ -194,13 +183,13 @@ private fun PttKeypressScreen(
             if (buttons.isEmpty()) {
                 item {
                     Card {
-                        Column(Modifier.padding(20.dp)) {
+                        Column(Modifier.padding(18.dp)) {
                             Icon(Icons.Outlined.Bluetooth, null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(12.dp))
                             Text("No PTT buttons yet", fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Tap Pair PTT, then press and hold the physical PTT button so it wakes and advertises.",
+                                "Tap Pair PTT, then press and hold your PTT button until it appears.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -277,17 +266,17 @@ private fun SetupCard(
     onClick: () -> Unit,
 ) {
     Card {
-        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.Top) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
                 Box(Modifier.padding(10.dp)) { icon() }
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (button != null) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(6.dp))
                     TextButton(onClick = onClick, contentPadding = PaddingValues(0.dp)) { Text(button) }
                 }
             }
