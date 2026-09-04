@@ -23,7 +23,7 @@ class PttForegroundService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("PTT Keypress")
-            .setContentText("Waiting for paired PTT buttons")
+            .setContentText("Waiting for PTT → VoxDMR")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -62,7 +62,7 @@ class PttForegroundService : Service() {
                 "PTT connection",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Keeps sleeping PTT buttons armed for their next press."
+                description = "Keeps sleeping PTT buttons armed and bridges them to VoxDMR."
                 setShowBadge(false)
             }
         )
