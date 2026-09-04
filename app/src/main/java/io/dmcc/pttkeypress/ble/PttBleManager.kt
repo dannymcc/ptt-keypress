@@ -50,7 +50,9 @@ class PttBleManager(
     val states: StateFlow<Map<String, PttDeviceState>> = _states.asStateFlow()
 
     private val connections = mutableMapOf<String, BluetoothGatt>()
-    private val pressed = mutableSetOf<String>()
+    private val held = mutableSetOf<String>()
+    private val injectedKeys = mutableMapOf<String, Int>()
+    private val suppressUntilDisconnect = mutableSetOf<String>()
     private var scanCallback: ScanCallback? = null
     private var scanStartedNs = 0L
 
@@ -66,6 +68,9 @@ class PttBleManager(
     @SuppressLint("MissingPermission")
     fun pair(device: ScanDevice) {
         repository.add(device.address, device.name)
+        // The user is physically holding the button to make it advertise during pairing.
+        // Do not let that setup hold trigger their downstream key-mapper.
+        suppressUntilDisconnect.add(device.address)
         stopPairingScan()
         disconnectInternal(device.address, rearm = false)
         connect(device.address, autoConnect = false)
@@ -139,6 +144,7 @@ class PttBleManager(
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         releaseIfNeeded(address)
+                        suppressUntilDisconnect.remove(address)
                         runCatching { gatt.close() }
                         if (connections[address] === gatt) connections.remove(address)
                         _states.update { it + (address to PttDeviceState.Waiting) }
@@ -182,6 +188,19 @@ class PttBleManager(
                 }
             }
 
+            override fun onDescriptorWrite(
+                gatt: BluetoothGatt,
+                descriptor: BluetoothGattDescriptor,
+                status: Int,
+            ) {
+                if (descriptor.uuid == CCCD && status == BluetoothGatt.GATT_SUCCESS) {
+                    // This hardware only wakes/connects while the physical PTT is held.
+                    // Treat a fully-subscribed wake connection as a press fallback so a very
+                    // short-lived peripheral cannot lose its 0x01 notification during setup.
+                    pressIfNeeded(address)
+                }
+            }
+
             override fun onCharacteristicChanged(
                 gatt: BluetoothGatt,
                 characteristic: BluetoothGattCharacteristic,
@@ -206,12 +225,7 @@ class PttBleManager(
 
     private fun handleValue(address: String, value: ByteArray) {
         when (value.firstOrNull()) {
-            0x01.toByte() -> {
-                if (pressed.add(address)) {
-                    repository.find(address)?.let { injector.inject(it.keyCode, true) }
-                }
-                _states.update { it + (address to PttDeviceState.Pressed) }
-            }
+            0x01.toByte() -> pressIfNeeded(address)
             0x00.toByte() -> {
                 releaseIfNeeded(address)
                 _states.update { it + (address to PttDeviceState.Connected) }
@@ -219,9 +233,26 @@ class PttBleManager(
         }
     }
 
+    private fun pressIfNeeded(address: String) {
+        if (!held.add(address)) {
+            _states.update { it + (address to PttDeviceState.Pressed) }
+            return
+        }
+
+        if (!suppressUntilDisconnect.contains(address)) {
+            repository.find(address)?.let { button ->
+                if (injector.inject(button.keyCode, true)) {
+                    injectedKeys[address] = button.keyCode
+                }
+            }
+        }
+        _states.update { it + (address to PttDeviceState.Pressed) }
+    }
+
     private fun releaseIfNeeded(address: String) {
-        if (!pressed.remove(address)) return
-        repository.find(address)?.let { injector.inject(it.keyCode, false) }
+        held.remove(address)
+        val keyCode = injectedKeys.remove(address) ?: return
+        injector.inject(keyCode, false)
     }
 
     @SuppressLint("MissingPermission")
