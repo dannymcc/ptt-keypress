@@ -10,10 +10,18 @@ import androidx.annotation.Keep
 
 class KeyInjectorUserService @Keep constructor(context: Context) : IKeyInjector.Stub() {
 
+    private val downTimes = mutableMapOf<Int, Long>()
+
+    @Synchronized
     override fun injectKey(keyCode: Int, down: Boolean) {
         val now = SystemClock.uptimeMillis()
+        val downTime = if (down) {
+            downTimes.getOrPut(keyCode) { now }
+        } else {
+            downTimes.remove(keyCode) ?: now
+        }
         val event = KeyEvent(
-            now,
+            downTime,
             now,
             if (down) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP,
             keyCode,
