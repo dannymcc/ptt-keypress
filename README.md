@@ -1,97 +1,81 @@
 # PTT Keypress
 
-PTT Keypress is a small Android middleware app that turns supported Bluetooth LE push-to-talk buttons into configurable Android key events.
+PTT Keypress bridges supported Bluetooth LE push-to-talk buttons directly into **VoxDMR** on Android.
 
-**Sleeping BLE PTT button → PTT Keypress → Android key event → your existing key-mapper app**
+**Sleeping BLE PTT button → PTT Keypress → VoxDMR**
 
-The first supported hardware family is the Zello-style HM-10 / TI CC254x profile already proven in [android-ble-ptt](https://github.com/dannymcc/android-ble-ptt):
+No root. No Shizuku. No ADB setup after each reboot. No synthetic keyboard event.
+
+## Supported BLE buttons
+
+The initial hardware family is the Zello-style HM-10 / TI CC254x profile already proven in [android-ble-ptt](https://github.com/dannymcc/android-ble-ptt):
 
 - service `FFE0`
 - characteristic `FFE1`
 - `0x01` = PTT pressed
 - `0x00` = PTT released
 
-## Important hardware behaviour
-
-These PTT buttons sleep when released and only wake/advertise while the physical button is held.
+These buttons sleep when released and only wake/advertise while the physical button is held.
 
 PTT Keypress is designed around that behaviour:
 
 - Pairing tells the user to **press and hold** the button so it wakes.
-- Paired buttons are kept **armed with Android BLE autoConnect**, rather than continuously scanned.
+- Paired buttons are kept armed using Android BLE `autoConnect`.
 - A healthy sleeping button is shown as **Ready — press PTT**, not Disconnected.
-- If the device sleeps before a release notification arrives, PTT Keypress sends a fail-safe **KEY_UP** so the mapped key cannot remain stuck.
+- A successful wake/subscription is also treated as a press fallback for very short-lived peripherals.
+- If the peripheral sleeps before sending its release notification, disconnect produces the matching PTT-up.
+- Pairing holds are suppressed so adding a button does not key VoxDMR.
+- Multiple paired buttons are supported; overlapping holds keep VoxDMR keyed until the final button is released.
 
-## Key mapping
+## VoxDMR integration
 
-Each paired PTT button has its own mapping.
+VoxDMR's Android package is:
 
-Default:
+`com.jcalado.voxdmr`
 
-- **Left Shift — Recommended**
+PTT Keypress sends explicit external-radio PTT broadcasts to VoxDMR:
 
-Other presets:
+- `android.intent.action.PTT_DOWN`
+- `android.intent.action.PTT_UP`
 
-- Right Shift
-- Left Ctrl
-- Left Alt
-- F1
-- F2
-- F3
-- F4
-- Media Play / Pause
+VoxDMR added external radio PTT broadcast handling for background / lock-screen operation, so this route does not require privileged input injection.
 
-Pressing PTT sends a real `KEY_DOWN`; releasing it sends `KEY_UP`.
+## Reboot behaviour
 
-Left Shift is the default because a lone Shift press normally has no visible side effect, making it a useful trigger for a downstream key-mapper app.
+Once at least one button is paired, PTT Keypress registers for Android boot completion and automatically restarts its connected-device foreground service after reboot, provided the Bluetooth permission previously granted to the app is still present.
 
-## Shizuku
-
-Arbitrary global key injection is performed by a Shizuku user service running with shell/root identity.
-
-1. Install Shizuku.
-2. Start Shizuku using wireless debugging or root.
-3. Open PTT Keypress.
-4. Grant the one-time Shizuku permission.
-5. Pair a PTT button and choose its mapped key.
+The persistent low-priority notification means the bridge is armed in the background.
 
 ## APK downloads
 
 GitHub Actions builds the app on every push to `main`.
 
-The workflow uploads:
+The workflow publishes:
 
 - `ptt-keypress.apk`
 - `ptt-keypress.apk.sha256`
 
-Main builds are published to the rolling **latest-main** prerelease. Tags matching `v*` create normal GitHub Releases.
+Main builds update the rolling **latest-main** prerelease. Tags matching `v*` create normal GitHub Releases.
 
-The APK is signed with the same stable development key used by `android-ble-ptt`, so successive CI builds can be installed as updates instead of requiring an uninstall between builds.
+## First setup
 
-## Build locally
-
-Requirements:
-
-- JDK 17
-- Gradle 8.10.2
-- Android SDK 35
-
-For the same stable debug signature used by CI, place the development keystore at:
-
-`signing/debug.keystore`
-
-Then run:
-
-```bash
-gradle :app:assembleDebug
-```
-
-Without that file, Android Gradle Plugin can use your local debug signing setup instead.
+1. Install VoxDMR.
+2. Install PTT Keypress.
+3. Grant Bluetooth / nearby-device permission.
+4. Tap **Pair PTT**.
+5. Press and hold the physical PTT button until it appears.
+6. Select it and release the button.
+7. Open VoxDMR and connect normally.
+8. Press the BLE PTT button — PTT Keypress bridges the hold directly to VoxDMR.
 
 ## Package
 
 `io.dmcc.pttkeypress`
 
+## Current version
+
+`0.2.0`
+
 ## Status
 
-Early MVP. The BLE lifecycle is intentionally tailored to wake-on-hold PTT buttons and should be tested on the target Android handset and actual PTT hardware before depending on it.
+Early hardware-test MVP. The Android build is CI-validated, but BLE wake timing and VoxDMR's external broadcast path should still be verified on the target handset and physical PTT hardware.
