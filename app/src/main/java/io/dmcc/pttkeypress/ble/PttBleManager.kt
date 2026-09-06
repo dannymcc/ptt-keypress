@@ -104,16 +104,17 @@ class PttBleManager(
     @SuppressLint("MissingPermission")
     private fun handleScan(result: ScanResult) {
         if (result.timestampNanos < scanStartedNs) return
-        val name = result.scanRecord?.deviceName
+        // Match on the advertised name only. The "PTT button" placeholder is for display and
+        // must never take part in matching, or every nameless device in range looks like a button.
+        val advertisedName = result.scanRecord?.deviceName
             ?: runCatching { result.device.name }.getOrNull()
-            ?: "PTT button"
         val serviceMatch = result.scanRecord?.serviceUuids?.any { it.uuid == SERVICE_PTT } == true
-        val nameMatch = name.startsWith("PTT", ignoreCase = true)
+        val nameMatch = advertisedName?.startsWith("PTT", ignoreCase = true) == true
         if (!serviceMatch && !nameMatch) return
         if (repository.find(result.device.address) != null) return
 
         _scanResults.update { current ->
-            val next = ScanDevice(result.device.address, name, result.rssi)
+            val next = ScanDevice(result.device.address, advertisedName ?: "PTT button", result.rssi)
             current.filterNot { it.address == next.address } + next
         }
     }
