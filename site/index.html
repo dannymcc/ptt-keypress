@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%237A3E65'/><text x='6' y='57' font-family='Georgia,serif' font-weight='600' font-size='22' fill='%23FFFDF8'>pk.</text></svg>">
+<title>PTT Keypress — a Bluetooth PTT button for VoxDMR</title>
+<meta name="description" content="PTT Keypress is a small Android app that turns a cheap Bluetooth LE push-to-talk button into a hardware PTT for VoxDMR. No root, no Shizuku, no ADB after every reboot.">
+<meta name="theme-color" content="#7A3E65">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --paper:      #FFFDF8;
+    --paper-low:  #F7F4EC;
+    --ink:        #1C1B18;
+    --body:       #3F3B35;
+    --muted:      #6E6A61;
+    --rule:       #E4E0D6;
+    --aubergine:  #7A3E65;
+    --aubergine-dark: #5E2E4D;
+    --blush:      #F3DCE9;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --sans:  "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--body);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a { color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--aubergine); outline-offset: 3px; border-radius: 3px; }
+
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem; }
+  .measure { max-width: 36rem; }
+
+  /* Masthead */
+  .masthead { display: flex; align-items: center; gap: 0.85rem; padding: 1.9rem 0 0; }
+  .mark { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: block; }
+  .wordmark { font-family: var(--serif); font-weight: 600; font-size: 1.3rem; letter-spacing: -0.01em; line-height: 1; color: var(--ink); }
+  .masthead .build { margin-left: auto; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* Hero */
+  .hero { padding: 4.5rem 0 0; }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 600; color: var(--ink);
+    font-size: clamp(2.4rem, 7.5vw, 4.2rem);
+    line-height: 1.04; letter-spacing: -0.025em;
+    max-width: 22ch;
+  }
+  .hero h1 em { font-style: normal; color: var(--aubergine); }
+  .hero .lede { font-size: 1.12rem; margin-top: 1.5rem; }
+
+  /* The chain */
+  .chain {
+    margin-top: 3.25rem;
+    border: 1px solid var(--rule); border-radius: 20px;
+    background: var(--paper-low);
+    padding: 1.6rem 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 1rem;
+    align-items: center;
+  }
+  .node { text-align: center; }
+  .node .what { font-family: var(--serif); font-weight: 600; font-size: 1.15rem; color: var(--ink); line-height: 1.2; }
+  .node .how { font-size: 0.85rem; color: var(--muted); margin-top: 0.35rem; }
+  .node svg { display: block; width: 48px; height: 48px; margin: 0 auto 0.75rem; }
+  .arrow { color: var(--aubergine); font-size: 1.6rem; line-height: 1; }
+  @media (max-width: 640px) {
+    .chain { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); text-align: center; }
+  }
+
+  /* Sections */
+  section { padding-top: 4rem; }
+  h2 {
+    font-family: var(--serif); font-weight: 600; color: var(--ink);
+    font-size: clamp(1.6rem, 3.6vw, 2.1rem); letter-spacing: -0.018em; line-height: 1.15;
+    margin-bottom: 1.5rem;
+  }
+  .label {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.9rem;
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 3rem; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  .row h3 { font-family: var(--serif); font-weight: 600; font-size: 1.15rem; color: var(--ink); margin-bottom: 0.35rem; }
+  .row p { font-size: 1rem; }
+
+  ol.steps { list-style: none; counter-reset: step; max-width: 36rem; }
+  ol.steps li {
+    counter-increment: step; position: relative;
+    padding: 0.85rem 0 0.85rem 3rem; border-top: 1px solid var(--rule);
+  }
+  ol.steps li:last-child { border-bottom: 1px solid var(--rule); }
+  ol.steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 0.95rem;
+    width: 1.8rem; height: 1.8rem; border-radius: 999px;
+    background: var(--blush); color: var(--aubergine-dark);
+    font-weight: 600; font-size: 0.85rem; line-height: 1.8rem; text-align: center;
+  }
+  ol.steps b { color: var(--ink); font-weight: 600; }
+
+  .spec {
+    border: 1px solid var(--rule); border-radius: 14px; overflow: hidden;
+    max-width: 36rem; font-size: 0.95rem;
+  }
+  .spec div { display: grid; grid-template-columns: 11rem 1fr; gap: 1rem; padding: 0.7rem 1rem; border-top: 1px solid var(--rule); }
+  .spec div:first-child { border-top: 0; }
+  .spec dt { color: var(--muted); }
+  .spec dd { color: var(--ink); }
+  .spec code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; background: var(--paper-low); padding: 0.1em 0.35em; border-radius: 4px; }
+  @media (max-width: 480px) { .spec div { grid-template-columns: 1fr; gap: 0.15rem; } }
+
+  /* Download */
+  .download {
+    margin-top: 4.5rem;
+    background: var(--ink); color: var(--paper);
+    border-radius: 24px; padding: 2.5rem clamp(1.5rem, 5vw, 3rem);
+    display: grid; grid-template-columns: minmax(0, 1.4fr) auto; gap: 2rem; align-items: center;
+  }
+  .download h2 { color: var(--paper); margin-bottom: 0.6rem; }
+  .download .line { color: rgba(255, 253, 248, 0.7); font-size: 0.95rem; }
+  .download .fine { color: rgba(255, 253, 248, 0.55); font-size: 0.88rem; margin-top: 0.75rem; max-width: 34rem; }
+  .download .fine a { color: rgba(255, 253, 248, 0.85); }
+  .get {
+    display: inline-block; white-space: nowrap;
+    background: var(--paper); color: var(--ink);
+    font-weight: 600; text-decoration: none;
+    padding: 0.9rem 1.6rem; border-radius: 999px;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .get:hover { transform: translateY(-2px); background: #fff; }
+  .get + .get { margin-left: 0.6rem; }
+  .get.alt { background: transparent; color: var(--paper); border: 1px solid rgba(255, 253, 248, 0.35); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .buttons .get + .get { margin-left: 0; }
+  @media (max-width: 640px) { .download { grid-template-columns: 1fr; } }
+
+  footer {
+    display: flex; gap: 1.5rem; align-items: center;
+    margin-top: 3rem; padding: 1.5rem 0 3rem; border-top: 1px solid var(--rule);
+    font-size: 0.875rem;
+  }
+  footer a { color: var(--muted); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  footer a:hover { color: var(--ink); }
+  footer .end { margin-left: auto; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" fill="#7A3E65"/>
+      <text x="6" y="57" font-family="'Source Serif 4', Georgia, serif" font-weight="600" font-size="22" fill="#FFFDF8">pk.</text>
+    </svg>
+    <span class="wordmark">PTT Keypress</span>
+    <span class="build">v0.2.0 · Android 8+</span>
+  </header>
+
+  <div class="hero">
+    <h1>A real PTT button for <em>VoxDMR</em>.</h1>
+    <p class="lede measure">
+      Those small Bluetooth push-to-talk buttons made for Zello are cheap, light and
+      clip to anything. PTT Keypress makes one of them key VoxDMR on Android. Hold the
+      button and you are transmitting. Let go and you are not. That is the whole app.
+    </p>
+  </div>
+
+  <div class="chain" role="img" aria-label="Diagram: a Bluetooth PTT button wakes and notifies PTT Keypress, which sends a push-to-talk broadcast to VoxDMR.">
+    <div class="node">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="#7A3E65" stroke-width="2.5"/>
+        <circle cx="24" cy="24" r="9" fill="#7A3E65"/>
+      </svg>
+      <p class="what">BLE PTT button</p>
+      <p class="how">wakes on press, sleeps on release</p>
+    </div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="6" y="6" width="36" height="36" rx="8" fill="#7A3E65"/>
+        <text x="11" y="33" font-family="'Source Serif 4', Georgia, serif" font-weight="600" font-size="16" fill="#FFFDF8">pk.</text>
+      </svg>
+      <p class="what">PTT Keypress</p>
+      <p class="how">holds the link, turns presses into PTT events</p>
+    </div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="node">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="6" y="6" width="36" height="36" rx="8" fill="none" stroke="#1C1B18" stroke-width="2.5"/>
+        <path d="M17 30 L17 18 L24 26 L31 18 L31 30" fill="none" stroke="#1C1B18" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="what">VoxDMR</p>
+      <p class="how">keys up on the network while you hold</p>
+    </div>
+  </div>
+
+  <section>
+    <h2>Why it exists</h2>
+    <p class="measure">
+      VoxDMR turns an Android phone into a DMR talkgroup client, and it can be keyed
+      from outside by a plain Android broadcast. What was missing was something that
+      understood the buttons. They sleep the moment you let go, only advertise while
+      held, and the first workarounds all needed root, Shizuku, or an ADB command
+      after every reboot. PTT Keypress is the piece in the middle, and it needs none of
+      those.
+    </p>
+  </section>
+
+  <section>
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="row">
+        <h3>Stays armed while the button sleeps</h3>
+        <p>
+          A paired button is kept on Android's own auto-connect, so the phone
+          reconnects the instant the button wakes. A sleeping button shows as
+          <b>Ready</b>, not Disconnected, because that is what it is.
+        </p>
+      </div>
+      <div class="row">
+        <h3>Keys VoxDMR directly</h3>
+        <p>
+          Press and release become VoxDMR's external PTT broadcasts. No fake
+          keyboard, no accessibility service, and it works from the lock screen
+          or with another app in front.
+        </p>
+      </div>
+      <div class="row">
+        <h3>Never leaves you stuck on air</h3>
+        <p>
+          If a button drops off before it manages to send its release, the
+          disconnect itself sends the matching PTT up. Short-lived presses that
+          barely wake the button still register.
+        </p>
+      </div>
+      <div class="row">
+        <h3>Survives a reboot</h3>
+        <p>
+          Once a button is paired the bridge starts itself again after a restart
+          and sits in a quiet notification, ready before you have unlocked the
+          phone.
+        </p>
+      </div>
+      <div class="row">
+        <h3>More than one button</h3>
+        <p>
+          Pair a couple of them. Overlapping holds keep VoxDMR keyed until the
+          last button is let go.
+        </p>
+      </div>
+      <div class="row">
+        <h3>Pairing does not key up</h3>
+        <p>
+          You hold the button to make it visible while pairing, so that hold is
+          ignored. Adding a button never transmits.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Setting up</h2>
+    <ol class="steps">
+      <li>Install <b>VoxDMR</b> and connect to your network as usual.</li>
+      <li>Install <b>PTT Keypress</b> and grant the nearby devices permission when asked.</li>
+      <li>Tap <b>Pair PTT</b>, then press and hold the physical button until it appears in the list.</li>
+      <li>Select it, let go of the button, and the status flips to <b>Ready</b>.</li>
+      <li>Press the button. VoxDMR keys up for as long as you hold it.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Supported buttons</h2>
+    <p class="measure" style="margin-bottom: 1.25rem;">
+      Anything built on the common HM-10 style Bluetooth LE profile that the
+      Zello-compatible buttons use. The Focket PTT-Z01 is the one on my desk,
+      and the PRYME BT-PTT-Z and the DIY 100pct-ptt design speak the same
+      protocol.
+    </p>
+    <dl class="spec">
+      <div><dt>Service</dt><dd><code>FFE0</code></dd></div>
+      <div><dt>Characteristic</dt><dd><code>FFE1</code>, notify</dd></div>
+      <div><dt>Pressed</dt><dd><code>0x01</code></dd></div>
+      <div><dt>Released</dt><dd><code>0x00</code></dd></div>
+      <div><dt>Talks to</dt><dd>VoxDMR (<code>com.jcalado.voxdmr</code>) via its PTT_DOWN and PTT_UP broadcasts</dd></div>
+    </dl>
+  </section>
+
+  <div class="download">
+    <div>
+      <h2>Get PTT Keypress</h2>
+      <p class="line">v0.2.0 · Android 8 and up · direct APK · about 16&nbsp;MB</p>
+      <p class="fine">
+        Sideload it. There is no store listing and no updater, and each build
+        installs straight over the last. It is an early hardware-test build,
+        so please tell me on
+        <a href="https://github.com/dannymcc/ptt-keypress/issues">GitHub</a>
+        which phone and button you tried it with.
+      </p>
+    </div>
+    <div class="buttons">
+      <a class="get" href="https://github.com/dannymcc/ptt-keypress/releases/download/latest-main/ptt-keypress.apk">Download APK</a>
+      <a class="get alt" href="https://github.com/dannymcc/ptt-keypress">Source</a>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://apps.dmcc.io">apps</a>
+    <a href="https://dmcc.io">dmcc.io</a>
+    <span class="end">no account · no tracking</span>
+  </footer>
+
+</div>
+</body>
+</html>
