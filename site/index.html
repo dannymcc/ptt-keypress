@@ -113,6 +113,8 @@
     font-weight: 600; font-size: 0.85rem; line-height: 1.8rem; text-align: center;
   }
   ol.steps b { color: var(--ink); font-weight: 600; }
+  .note { max-width: 36rem; margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: 14px; background: var(--blush); font-size: 0.95rem; }
+  .note b { color: var(--ink); font-weight: 600; }
 
   .spec {
     border: 1px solid var(--rule); border-radius: 14px; overflow: hidden;
@@ -172,7 +174,7 @@
       <text x="6" y="57" font-family="'Source Serif 4', Georgia, serif" font-weight="600" font-size="22" fill="#FFFDF8">pk.</text>
     </svg>
     <span class="wordmark">PTT Keypress</span>
-    <span class="build">v0.2.1 · Android 8+</span>
+    <span class="build">v0.2.2 · Android 8+</span>
   </header>
 
   <div class="hero">
@@ -286,6 +288,7 @@
       <li>Select it, let go of the button, and the status flips to <b>Ready</b>.</li>
       <li>Press the button. VoxDMR keys up for as long as you hold it.</li>
     </ol>
+    <p class="note"><b>Nothing happening in VoxDMR?</b> Leave VoxDMR's <i>Talk button</i> binding as "Not set". PTT Keypress never sends a keyboard key, so there is nothing to bind there. If VoxDMR still ignores the button, restart the phone once. That has fixed it on every handset reported so far, and it only needs doing the first time.</p>
   </section>
 
   <section>
@@ -308,7 +311,7 @@
   <div class="download">
     <div>
       <h2>Get PTT Keypress</h2>
-      <p class="line">v0.2.1 · Android 8 and up · direct APK · about 16&nbsp;MB</p>
+      <p class="line">v0.2.2 · Android 8 and up · direct APK · about 16&nbsp;MB</p>
       <p class="fine">
         Sideload it. There is no store listing and no updater, and each build
         installs straight over the last. It is an early hardware-test build,
