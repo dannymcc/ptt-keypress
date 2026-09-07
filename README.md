@@ -33,12 +33,14 @@ VoxDMR's Android package is:
 
 `com.jcalado.voxdmr`
 
-PTT Keypress sends explicit external-radio PTT broadcasts to VoxDMR:
+PTT Keypress sends VoxDMR its own external PTT broadcasts:
 
-- `android.intent.action.PTT_DOWN`
-- `android.intent.action.PTT_UP`
+- `com.voxdmr.ptt.DOWN`
+- `com.voxdmr.ptt.UP`
 
-VoxDMR added external radio PTT broadcast handling for background / lock-screen operation, so this route does not require privileged input injection.
+These are the actions VoxDMR declares in its manifest for its `PttBroadcastReceiver`, so they are picked up whether or not VoxDMR happens to be in the foreground and without the accessibility service or any key binding. The generic `android.intent.action.PTT_DOWN` / `PTT_UP` actions are only handled by a receiver VoxDMR registers at runtime, so PTT Keypress no longer uses them. No privileged input injection is involved.
+
+Leave VoxDMR's *Talk button* binding as "Not set". PTT Keypress never sends a key event, so there is nothing to bind.
 
 ## Reboot behaviour
 
@@ -68,13 +70,18 @@ Main builds update the rolling **latest-main** prerelease. Tags matching `v*` cr
 7. Open VoxDMR and connect normally.
 8. Press the BLE PTT button — PTT Keypress bridges the hold directly to VoxDMR.
 
+### If VoxDMR does nothing
+
+- Leave VoxDMR's **Talk button** binding as "Not set". PTT Keypress never sends a keyboard key, so there is nothing to bind.
+- Restart the phone once. On every handset reported so far a full restart got VoxDMR responding, and it only needs doing the first time.
+
 ## Package
 
 `io.dmcc.pttkeypress`
 
 ## Current version
 
-`0.2.1`
+`0.2.2`
 
 ## Status
 

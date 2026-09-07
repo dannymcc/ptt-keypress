@@ -43,7 +43,7 @@ class VoxDmrBridge(private val context: Context) {
 
     companion object {
         const val VOXDMR_PACKAGE = "com.jcalado.voxdmr"
-        const val ACTION_PTT_DOWN = "android.intent.action.PTT_DOWN"
-        const val ACTION_PTT_UP = "android.intent.action.PTT_UP"
+        const val ACTION_PTT_DOWN = "com.voxdmr.ptt.DOWN"
+        const val ACTION_PTT_UP = "com.voxdmr.ptt.UP"
     }
 }
