@@ -63,7 +63,7 @@ jobs:
         with:
           tag_name: latest-main
           name: Latest main build
-          body: Latest development APK from main. Install and start Shizuku before enabling key injection.
+          body: Latest development APK built from main. Pair your BLE button in the app and VoxDMR picks up the presses directly. No root, Shizuku or ADB needed.
           prerelease: true
           files: |
             artifacts/ptt-keypress.apk
