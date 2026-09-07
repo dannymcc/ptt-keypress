@@ -74,7 +74,7 @@ Main builds update the rolling **latest-main** prerelease. Tags matching `v*` cr
 
 ## Current version
 
-`0.2.0`
+`0.2.1`
 
 ## Status
 
